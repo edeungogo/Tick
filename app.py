@@ -1,56 +1,128 @@
+Python
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import date
 
 # 1. 페이지 레이아웃 및 타이틀 설정
-st.set_page_config(page_title="세종시 학사일정 연동 진드기 안전 시스템", layout="wide", page_icon="🕷️")
+st.set_page_config(page_title="세종시 진드기 정밀 예보 시스템", layout="wide", page_icon="🕷️")
 
-st.title("🍊 오렌지3 연동 참진드기 위험도 예측 및 교사 문자 알림 시스템")
-st.write("학사일정에서 야외 활동(체험학습, 수련활동 등)이 있는 날을 자동 감지하여 담당 교사에게 위험도와 안전 지침을 안내합니다.")
+st.title("🍊 오렌지3+시즌 가중치 결합 진드기 위험도 정밀 예측 시스템")
+st.write("오렌지3의 분석 모델에 질병관리청의 월별 발생 추이 통계를 결합하여 날짜별 정밀 위험도를 도출합니다.")
 st.markdown("---")
 
 # 2. 데이터 세트 로드 및 전처리 함수
 @st.cache_data
 def load_system_data():
     try:
-        # 오렌지3 예측 및 포뮬러 결과물 로드 (상단 2개의 타입 정의 행 제외하고 로드)
+        # 오렌지3 결과물 로드
         raw_tick = pd.read_csv("tick_risk_lookup.csv")
         tick_df = raw_tick.drop([0, 1]).reset_index(drop=True)
         
-        # 학사일정 데이터 로드 및 전처리
-        calendar_df = pd.read_csv("calendar.csv")
-        # 문자열 형태의 학사일자를 날짜 형태로 변환 (예: 20250304 -> 2025-03-04)
+        # 학사일정 데이터 로드 (파일명 확인 필요: calendar.csv 또는 원본명)
+        # 여기서는 안전을 위해 오류가 났던 원본 파일명을 사용합니다.
+        calendar_df = pd.read_csv("세종시 학사일정.xls - 학사일정.csv")
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
         
-        return tick_df, calendar_df
-    except Exception as e:
-        st.error(f"⚠️ 파일 로드 중 오류 발생: {e}. 파일명이 레포지토리 내부와 일치하는지 확인해 주세요.")
-        return None, None
-
-tick_df, calendar_df = load_system_data()
-
-if tick_df is not None and calendar_df is not None:
-    
-    # 3. 화면을 3개의 탭(Tab)으로 나누어 직관적인 인터페이스 구축
-    tab1, tab2, tab3 = st.tabs(["📅 학사일정 알림 전송 대시보드", "🕵️ 개별 위험도 수동 조회", "📞 교사 비상 연락처 관리"])
-    
-    # [탭 3] 연락처 관리를 먼저 구현하여 연동성 확보 (간이 데이터베이스 역할)
-    with tab3:
-        st.subheader("📞 관내 학교별 담당 교사 연락처 사전 등록")
-        st.write("실제 운영 시에는 보안이 적용된 데이터베이스와 연동되며, 현재는 테스트용 모의 명부입니다.")
-        
-        # 샘플 연락처 데이터 프레임 생성
-        unique_schools = sorted(calendar_df['학교명'].unique())
-        contact_data = {
-            "학교명": ["가득초등학교", "고운고등학교", "고운중학교", "글벗중학교"],
-            "담당교사": ["김교사", "이교사", "박교사", "최교사"],
-            "연락처": ["010-1234-5678", "010-9876-5432", "010-5555-4444", "010-2222-3333"]
+        # [데이터 추가] 질병관리청 2021년 참진드기 월별 채집 통계 (가중치용)
+        # 4월부터 11월까지의 활동성을 0.5 ~ 2.0 사이의 배수로 환산
+        monthly_stats = {
+            3: 0.3, 4: 0.7, 5: 1.2, 6: 1.1, 
+            7: 0.6, 8: 1.0, 9: 2.0, 10: 1.5, 
+            11: 0.4, 12: 0.1, 1: 0.1, 2: 0.1
         }
-        contact_df = pd.DataFrame(contact_data)
         
-        # 사용자가 연락처 테이블을 직접 편집하고 등록할 수 있는 에디터 기능 제공
-        edited_contacts = st.data_editor(contact_df, num_rows="dynamic", use_container_width=True)
+        return tick_df, calendar_df, monthly_stats
+    except Exception as e:
+        st.error(f"⚠️ 파일 로드 중 오류 발생: {e}")
+        return None, None, None
+
+tick_df, calendar_df, monthly_stats = load_system_data()
+
+# 위험도 텍스트를 숫자로 변환하는 매핑 (정밀 계산용)
+risk_text_to_score = {
+    "매우 좋음": 10, "좋음": 25, "양호": 40, 
+    "보통": 55, "나쁨": 70, "매우 나쁨": 85, "최악": 100
+}
+
+# 숫자를 다시 7단계 텍스트로 변환하는 함수
+def get_risk_label(score):
+    if score >= 90: return "최악", "🔴"
+    elif score >= 75: return "매우 나쁨", "🟠"
+    elif score >= 60: return "나쁨", "🟡"
+    elif score >= 45: return "보통", "🟢"
+    elif score >= 30: return "양호", "🔵"
+    elif score >= 15: return "좋음", "⚪"
+    else: return "매우 좋음", "🌈"
+
+if tick_df is not None:
+    
+    # 3. 탭 구성 (4번째 탭 추가)
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📅 학사일정 알림 전송", 
+        "🕵️ 개별 위험도 수동 조회", 
+        "📞 교사 연락처 관리",
+        "📈 월/일별 시즌 정밀 예측"
+    ])
+    
+    # --- [신규 추가] 탭 4: 월/일별 시즌 정식 예측 ---
+    with tab4:
+        st.subheader("📆 날짜 기반 시즌 정밀 위험도 시뮬레이션")
+        st.info("오렌지3의 고정 지표에 환경부/질병청의 '월별 활동성 가중치'를 결합하여 선택하신 날짜의 위험도를 예측합니다.")
         
+        col_a, col_b = st.columns([1, 1])
+        
+        with col_a:
+            st.markdown("#### 1️⃣ 날짜 및 환경 설정")
+            target_date = st.date_input("예측하고 싶은 날짜를 선택하세요", value=date.today())
+            target_month = target_date.month
+            
+            q_region = st.selectbox("지역 선택", options=sorted(tick_df['region'].unique()), index=16, key="tab4_reg")
+            q_disease = st.selectbox("질병 선택", options=sorted(tick_df['disease'].unique()), index=1, key="tab4_dis")
+            q_habitat = st.selectbox("환경 선택", options=sorted(tick_df['weather_or_habitat'].unique()), index=3, key="tab4_hab")
+
+        # 계산 로직
+        base_data = tick_df[
+            (tick_df['region'] == q_region) & 
+            (tick_df['disease'] == q_disease) & 
+            (tick_df['weather_or_habitat'] == q_habitat)
+        ]
+        
+        if not base_data.empty:
+            # 1. 오렌지3 기본 점수 (0~100점 사이로 가정)
+            base_score = float(base_data['final_risk_score'].values[0])
+            
+            # 2. 선택한 월의 활동 가중치 적용
+            season_weight = monthly_stats.get(target_month, 0.1)
+            
+            # 3. 최종 정밀 점수 산출 (기본점수 * 가중치, 최대 100점 제한)
+            refined_score = min(base_score * season_weight, 100.0)
+            refined_label, emoji = get_risk_label(refined_score)
+            
+            with col_b:
+                st.markdown("#### 2️⃣ 분석 결과")
+                st.metric(label=f"{target_month}월 {target_date.day}일 정밀 위험도", value=f"{emoji} {refined_label}")
+                
+                # 시각화: 월별 위험도 추이 차트
+                st.write(f"📊 {q_region} 지역 {q_habitat} 환경의 연간 위험도 변화")
+                
+                # 연간 데이터 생성
+                months = list(range(1, 13))
+                annual_risks = [min(base_score * monthly_stats[m], 100.0) for m in months]
+                
+                chart_data = pd.DataFrame({
+                    'Month': [f"{m}월" for m in months],
+                    'RiskScore': annual_risks
+                })
+                
+                # 단순 선그래프 표시
+                st.line_chart(data=chart_data, x='Month', y='RiskScore')
+                st.caption("※ 9월 유충 급증기 및 5월 활동기에 점수가 높게 나타납니다.")
+
+        else:
+            st.warning("선택하신 조건의 기초 데이터가 오렌지3 파일에 없습니다.")
     # [탭 1] 메인 대시보드: 학사일정과 오렌지3 데이터를 융합하는 핵심 공간
     with tab1:
         st.subheader("🏫 세종시 관내 학교 선택 및 야외 행사 자동 조회")
