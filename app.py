@@ -67,7 +67,7 @@ def load_system_data():
         tick_df = raw_tick.drop([0, 1]).reset_index(drop=True)
         
         # 학사일정 데이터 로드 및 날짜 전처리
-        calendar_df = pd.read_csv("calender.csv")
+        calendar_df = pd.read_csv("세종시 학사일정.xls - 학사일정.csv")
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
         
         # 질병관리청 참진드기 월별 가중치 지표
@@ -324,4 +324,87 @@ if tick_df is not None and calendar_df is not None:
         
         with map_col1:
             st.markdown("#### ⚙️ 검색 조건 탐색기")
-            q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index)
+            q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index=16, key="tab2_reg")
+            q_disease = st.selectbox("분석 대상 병원체/질병명", options=sorted(tick_df['disease'].unique()), index=1, key="tab2_dis")
+            q_habitat = st.selectbox("세부 서식 환경 조사 구역", options=sorted(tick_df['weather_or_habitat'].unique()), index=3, key="tab2_hab")
+            
+            search_result = tick_df[
+                (tick_df['region'] == q_region) & 
+                (tick_df['disease'] == q_disease) & 
+                (tick_df['weather_or_habitat'] == q_habitat)
+            ]
+            
+            if not search_result.empty:
+                res = search_result.iloc[0]
+                st.markdown("---")
+                st.metric("📌 최종 판정 등급", value=res['risk_level_text'])
+                st.metric("🔢 종합 포뮬러 스코어", value=f"{float(res['final_risk_score']):.2f}점")
+                st.metric("🦠 당해 발생 건수", value=f"{int(float(res['cases']))} 건")
+        
+        with map_col2:
+            map_figure = draw_korea_interactive_map(q_region)
+            st.pyplot(map_figure)
+            
+        if not search_result.empty:
+            with st.expander("📄 기반 데이터 출처 및 원천 조사 지표 보기"):
+                st.json({
+                    "지역 인구 수": f"{int(float(res['population'])):,} 명",
+                    "10만명당 발생률": res['incidence_100k'],
+                    "서식지 진드기 채집 개체 수": f"{int(float(res['tick_count'])):,} 마리",
+                    "원천 데이터 출처 URL": res['env_source_url']
+                })
+        else:
+            st.warning("조회 데이터가 존재하지 않는 특이 조건 조합입니다.")
+
+    # ---------------------------------------------------------
+    # [탭 4] 월/일별 시즌 정밀 예측 (신규 추가 탭 기능 전체)
+    # ---------------------------------------------------------
+    with tab4:
+        st.subheader("📆 날짜 기반 시즌 정밀 위험도 시뮬레이션")
+        st.info("오렌지3 포뮬러 기본 스코어에 질병관리청의 월별 참진드기 채집 증감 추이(시즌 가중치)를 연산하여 정밀 예보를 실행합니다.")
+        
+        col_a, col_b = st.columns([1, 1])
+        
+        with col_a:
+            st.markdown("#### 1️⃣ 날짜 및 환경 설정")
+            target_date = st.date_input("예측 시뮬레이션을 수행할 날짜를 입력하세요", value=date.today(), key="tab4_date")
+            target_month = target_date.month
+            
+            t4_region = st.selectbox("지역 선택", options=sorted(tick_df['region'].unique()), index=16, key="tab4_reg")
+            t4_disease = st.selectbox("질병 선택", options=sorted(tick_df['disease'].unique()), index=1, key="tab4_dis")
+            t4_habitat = st.selectbox("환경 선택", options=sorted(tick_df['weather_or_habitat'].unique()), index=3, key="tab4_hab")
+
+        base_data_t4 = tick_df[
+            (tick_df['region'] == t4_region) & 
+            (tick_df['disease'] == t4_disease) & 
+            (tick_df['weather_or_habitat'] == t4_habitat)
+        ]
+        
+        if not base_data_t4.empty:
+            base_score = float(base_data_t4['final_risk_score'].values[0])
+            season_weight = monthly_stats.get(target_month, 0.1)
+            refined_score = min(base_score * season_weight, 100.0)
+            refined_label, emoji = get_risk_label(refined_score)
+            
+            with col_b:
+                st.markdown("#### 2️⃣ 시즌 가중치 적용 분석 결과")
+                st.metric(label=f"🎯 {target_month}월 {target_date.day}일자 최종 정밀 위험 등급", value=f"{emoji} {refined_label} (지수: {refined_score:.1f}점)")
+                
+                t4_scale = draw_risk_scale_bar(refined_score, refined_label)
+                st.pyplot(t4_scale)
+                
+                st.markdown("---")
+                st.write(f"📊 **{t4_region} 지역 {t4_habitat} 환경의 연간 시즌별 리스크 변동 추이**")
+                
+                months_axis = list(range(1, 13))
+                annual_scores = [min(base_score * monthly_stats[m], 100.0) for m in months_axis]
+                
+                chart_df = pd.DataFrame({
+                    '해당 월': [f"{m}월" for m in months_axis],
+                    '위험도 지수 (Score)': annual_scores
+                })
+                
+                st.line_chart(data=chart_df, x='해당 월', y='위험도 지수 (Score)')
+                st.caption("💡 질병관리청 분석 데이터 검토: 국내 참진드기는 동절기 급감 후 약충이 등장하는 5월에 밀도가 높아졌다가, 산란 후 알이 부화하는 가을철(9월~10월)에 유충 밀도가 급격하게 대발생하는 곡선을 그립니다.")
+        else:
+            st.warning("선택하신 매칭 조건의 기초 데이터 행이 오렌지3 파일 내에 존재하지 않습니다.")
