@@ -324,4 +324,4 @@ if tick_df is not None and calendar_df is not None:
         
         with map_col1:
             st.markdown("#### ⚙️ 검색 조건 탐색기")
-            q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index
+            q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index)
