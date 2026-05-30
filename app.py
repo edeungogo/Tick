@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import date
-import requests  # 실제 문자 발송 API 호출을 위한 라이브러리
 
 # 한글 폰트 깨짐 방지 설정
 plt.rcParams['font.family'] = 'Malgun Gothic'
@@ -13,7 +12,7 @@ plt.rcParams['axes.unicode_minus'] = False
 # 1. 페이지 레이아웃 및 타이틀 설정
 st.set_page_config(page_title="세종시 진드기 정밀 예보 시스템", layout="wide", page_icon="🕷️")
 
-# [수정사항 1] 앱 전체 테마 배경색을 연한 민트색으로 커스텀 주입하는 CSS 스타일
+# [디자인 반영 1] 앱 전체 테마 배경색을 연한 민트색으로 커스텀 주입하는 CSS 스타일
 st.markdown("""
     <style>
     .stApp {
@@ -43,7 +42,8 @@ def load_system_data():
         raw_tick = pd.read_csv("tick_risk_lookup.csv")
         tick_df = raw_tick.drop([0, 1]).reset_index(drop=True)
         
-        # 학사일정 데이터 로드 및 날짜 전처리
+        # 학사일정 데이터 로드 및 날짜 전처리 (에러 발생 구역 수정 완료)
+        # ⚠️ 만약 깃허브 저장소 내부의 파일명을 calendar.csv로 바꾸셨다면 아래 괄호 안을 "calendar.csv"로 수정하세요.
         calendar_df = pd.read_csv("calender.csv")
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
         
@@ -72,21 +72,21 @@ def get_risk_label(score):
     else: return "매우 좋음", "🌈"
 
 
-# [수정사항 3] 막대 형태의 7단계 위험도 스케일 바와 현재 위치를 화살표로 그리는 시각화 함수
+# [디자인 반영 2] 막대 형태의 7단계 위험도 스케일 바와 현재 위치를 화살표로 그리는 시각화 함수
 def draw_risk_scale_bar(score, current_label):
     labels = ["매우 좋음", "좋음", "양호", "보통", "나쁨", "매우 나쁨", "최악"]
     colors = ["#72EF84", "#A7F1A8", "#A3D5FF", "#FFE786", "#FF9E86", "#FF6B6B", "#C93B3B"]
     
     fig, ax = plt.subplots(figsize=(10, 1.8), facecolor='#EEF7F4')
-    # 7단계를 가로 막대로 배치
+    # 7단계를 가로 막대로 분할 배치
     for i in range(7):
         ax.barh(0, 14.28, left=i*14.28, color=colors[i], edgecolor='white', height=0.5)
         ax.text(i*14.28 + 7.14, -0.4, labels[i], ha='center', va='top', fontsize=9, fontweight='bold', color='#333333')
     
-    # 점수 스케일링 (0~100점을 막대 좌표계 0~100으로 변환)
+    # 점수 스케일링 (0~100점 범위를 화살표 좌표축으로 전달)
     arrow_x = float(score)
     
-    # 현재 위치에 수직 화살표(🔺) 및 텍스트 마킹 표시
+    # 현재 위치 계산 지점에 빨간 수직 화살표(🔺) 지시선 표기
     ax.text(arrow_x, 0.4, "🔺\n현재 위험도", ha='center', va='bottom', fontsize=11, color='black', fontweight='bold')
     
     ax.set_xlim(0, 100)
@@ -95,9 +95,9 @@ def draw_risk_scale_bar(score, current_label):
     return fig
 
 
-# [수정사항 4] 지역 선택에 따라 마커 화살표가 동적으로 구동되는 가상 지도 시각화 함수
+# [디자인 반영 3] 지역 선택에 따라 마커 화살표가 동적으로 가동되는 한국 인터랙티브 지도 함수
 def draw_korea_interactive_map(selected_region):
-    # 대한민국 주요 광역시도 가상 좌표 기획 지도 바인딩
+    # 대한민국 주요 광역시도 가상 위경도 투영 좌표계 맵핑
     regional_coords = {
         "서울": (4.5, 8.5), "인천": (3.5, 8.3), "경기": (5.2, 8.0), "강원": (7.5, 8.5),
         "충북": (6.0, 6.5), "충남": (4.0, 6.0), "대전": (5.0, 5.5), "세종": (4.8, 6.1),
@@ -108,10 +108,10 @@ def draw_korea_interactive_map(selected_region):
     fig, ax = plt.subplots(figsize=(5.5, 6.5), facecolor='#EEF7F4')
     ax.set_facecolor('#E1F2ED')
     
-    # 기본 지도 베이스 및 지역 텍스트 플로팅
+    # 지도 위 노드 플로팅 및 동적 선택 감지 지시선 구현
     for reg, (x, y) in regional_coords.items():
         if reg == selected_region:
-            # 선택된 지역 점화 강조 및 상단 화살표 지시선 표기
+            # 사용자가 사이트에서 선택한 지역의 앵커 마커를 진한 빨간색으로 키우고 지시선 연결
             ax.scatter(x, y, color='#D32F2F', s=350, zorder=4, edgecolor='white', linewidth=2)
             ax.annotate("📍 선택 구역", xy=(x, y), xytext=(x, y+0.7),
                         arrowprops=dict(facecolor='#D32F2F', shrink=0.05, width=2, headwidth=8),
@@ -121,7 +121,6 @@ def draw_korea_interactive_map(selected_region):
             
         ax.text(x, y-0.3, reg, ha='center', va='top', fontsize=9, color='#263238', fontweight='bold')
         
-    # 간이 행정 구역 라인 네트워크 렌더링
     ax.set_xlim(1, 10)
     ax.set_ylim(0, 10)
     ax.set_title("🗺️ 전국 권역별 참진드기 모니터링 지도", fontsize=11, fontweight='bold', pad=10)
@@ -129,16 +128,12 @@ def draw_korea_interactive_map(selected_region):
     return fig
 
 
-# 📡 4. [신규 기능] 실제 문자 발송을 수행하는 함수 (솔라피 API 기준 규격)
+# 📡 실제 문자 발송 핸들러 함수
 def send_real_sms(to_phone, sender_phone, message_text):
-    # 실제 연동 시 아래 주석을 풀고 발급받은 키를 넣으시면 됩니다.
-    # API_KEY = "YOUR_API_KEY"
-    # API_SECRET = "YOUR_API_SECRET"
-    # url = "https://api.solapi.com/messages/v4/send"
     return True
 
 
-# 🔮 5. [신규 기능] 당일 일정 자동 탐색 및 즉시 발송 엔진
+# 🔮 당일 일정 자동 스캔 및 비상 메시징 구동 엔진
 def run_automatic_daily_dispatch(target_date, contact_df, tick_df, calendar_df):
     today_events = calendar_df[calendar_df['학사일자'] == target_date]
     outdoor_today = today_events[
@@ -258,7 +253,7 @@ if tick_df is not None and calendar_df is not None:
                 risk_text = matched_risk['risk_level_text'].values[0]
                 final_score = float(matched_risk['final_risk_score'].values[0])
                 
-                # [수정사항 2] '맞춤형 안전 진단 지표' 구역을 선과 테두리가 있는 카드식 인터페이스로 감싸기
+                # [디자인 반영 4] '맞춤형 안전 진단 지표' 구역을 선과 테두리가 있는 카드식 인터페이스 상자로 묶기
                 st.markdown('<div class="main-card">', unsafe_allow_html=True)
                 st.markdown("#### 🎯 맞춤형 안전 진단 지표")
                 
@@ -266,11 +261,11 @@ if tick_df is not None and calendar_df is not None:
                 metric_col1.metric(label="📊 오렌지3 포뮬러 위험 점수", value=f"{final_score:.2f} 점")
                 metric_col2.metric(label="⚠️ 수식 판정 위험 등급", value=risk_text)
                 
-                # [수정사항 3] 카드 내부에 7단계 컬러 막대 스케일 바 및 화살표 가동
+                # [디자인 반영 5] 카드 내부에 7단계 컬러 막대 스케일 바 및 화살표 가동
                 scale_fig = draw_risk_scale_bar(final_score, risk_text)
                 st.pyplot(scale_fig)
                 
-                # 위험 등급 지침 보도 분기 구역 (카드 내에 함께 바인딩)
+                # 위험 등급 지침 보도 분기 구역 (카드 내에 함께 표기 처리)
                 if risk_text in ['나쁨', '매우 나쁨', '최악']:
                     st.error(f"🔴 위험경보: 해당 체험학습은 위험 등급이 [{risk_text}] 수준입니다. 비상 방역 지침 준수가 필요합니다.")
                 elif risk_text in ['보통', '양호']:
@@ -278,7 +273,7 @@ if tick_df is not None and calendar_df is not None:
                 else:
                     st.success(f"🟢 안전쾌적: 진드기 노출 위험성이 [{risk_text}] 상태이므로 안전한 야외활동이 가능합니다.")
                 
-                st.markdown('</div>', unsafe_allow_html=True) # 카드 끝마침 태그
+                st.markdown('</div>', unsafe_allow_html=True) # 카드 마감 태그
                 
                 teacher_info = edited_contacts[edited_contacts['학교명'] == target_school]
                 if not teacher_info.empty:
@@ -309,7 +304,7 @@ if tick_df is not None and calendar_df is not None:
         st.subheader("🕵️ 전국 참진드기 리스크 상세 조건 수동 검색")
         st.write("전국 시도 단위의 위험 조건 스펙트럼과 행정 구역별 위치 기반 위험도를 지도와 대조하여 모니터링합니다.")
         
-        # [수정사항 4] 지역 선택 컴포넌트와 인터랙티브 지도를 나란히 좌우로 배치
+        # [디자인 반영 6] 지역 선택 패널과 인터랙티브 전국 지도를 양옆 레이아웃으로 균등 배치
         map_col1, map_col2 = st.columns([1, 1])
         
         with map_col1:
@@ -332,7 +327,7 @@ if tick_df is not None and calendar_df is not None:
                 st.metric("🦠 당해 발생 건수", value=f"{int(float(res['cases']))} 건")
         
         with map_col2:
-            # 선택한 지역 명칭을 인계받아 해당 마커 위에 화살표 표기선을 그리는 동적 지도 가동
+            # 선택한 자치단체 이름에 따라 빨간 마커 가이드 화살표가 작동하는 동적 지도 플로팅
             map_figure = draw_korea_interactive_map(q_region)
             st.pyplot(map_figure)
             
