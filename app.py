@@ -8,8 +8,8 @@ from datetime import date
 # 1. 페이지 레이아웃 및 타이틀 설정
 st.set_page_config(page_title="세종시 진드기 정밀 예보 시스템", layout="wide", page_icon="🕷️")
 
-st.title("🍊 오렌지3+시즌 가중치 결합 진드기 위험도 정밀 예측 시스템")
-st.write("오렌지3의 분석 모델에 질병관리청의 월별 발생 추이 통계를 결합하여 날짜별 정밀 위험도를 도출합니다.")
+st.title("진드기 위험도 정밀 예측 시스템")
+st.write("학교 일정과 기상·진드기 데이터를 활용해 야외활동 중 발생할 수 있는 진드기 매개질병 위험을 미리 알려주는 학생 안전 서비스입니다.")
 st.markdown("---")
 
 
