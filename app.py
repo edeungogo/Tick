@@ -23,7 +23,7 @@ def load_system_data():
         
         # 학사일정 데이터 로드 및 전처리
         # ⚠️ 만약 깃허브에서 파일 이름을 'calendar.csv'로 바꾸셨다면 아래 "세종시 학사일정.xls - 학사일정.csv" 부분을 "calendar.csv"로 고쳐주세요.
-        calendar_df = pd.read_csv("세종시 학사일정.xls - 학사일정.csv")
+        calendar_df = pd.read_csv("calendar.csv")
         
         # 문자열 형태의 학사일자를 날짜 형태로 변환 (예: 20250304 -> 2025-03-04)
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
