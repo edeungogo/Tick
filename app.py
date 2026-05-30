@@ -67,7 +67,7 @@ def load_system_data():
         tick_df = raw_tick.drop([0, 1]).reset_index(drop=True)
         
         # 학사일정 데이터 로드 및 날짜 전처리
-        calendar_df = pd.read_csv("세종시 학사일정.xls - 학사일정.csv")
+        calendar_df = pd.read_csv("calender.csv")
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
         
         # 질병관리청 참진드기 월별 가중치 지표
