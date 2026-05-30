@@ -35,19 +35,26 @@ font_prop = init_korean_font()
 # 1. 페이지 레이아웃 및 타이틀 설정
 st.set_page_config(page_title="세종시 진드기 정밀 예보 시스템", layout="wide", page_icon="🕷️")
 
-# [디자인] 앱 전체 테마 배경색을 연한 민트색으로 커스텀 주입하는 CSS 스타일
+# [디자인 반영 1] 앱 전체 테마 배경색을 연한 하늘색(Light Blue) 계열로 변경하는 CSS 스타일
 st.markdown("""
     <style>
     .stApp {
-        background-color: #EEF7F4;
+        background-color: #EBF3F9;
     }
     .main-card {
         background-color: #FFFFFF;
         padding: 25px;
         border-radius: 12px;
-        border: 2px solid #A3D9C9;
-        box-shadow: 2px 4px 12px rgba(0,0,0,0.05);
+        border: 2px solid #B9D1E6;
+        box-shadow: 2px 4px 12px rgba(0,0,0,0.04);
         margin-bottom: 20px;
+    }
+    .map-bg-card {
+        background-color: #FFFFFF;
+        padding: 20px;
+        border-radius: 12px;
+        border: 2px solid #B9D1E6;
+        position: relative;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -65,8 +72,7 @@ def load_system_data():
         raw_tick = pd.read_csv("tick_risk_lookup.csv")
         tick_df = raw_tick.drop([0, 1]).reset_index(drop=True)
         
-        # 학사일정 데이터 로드 및 날짜 전처리
-        # ⚠️ 요청하신 대로 파일명을 'calender.csv'로 완벽하게 일치 및 고정했습니다.
+        # 학사일정 데이터 로드 및 날짜 전처리 고정
         calendar_df = pd.read_csv("calender.csv")
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
         
@@ -100,7 +106,7 @@ def draw_risk_scale_bar(score, current_label):
     labels = ["매우 좋음", "좋음", "양호", "보통", "나쁨", "매우 나쁨", "최악"]
     colors = ["#72EF84", "#A7F1A8", "#A3D5FF", "#FFE786", "#FF9E86", "#FF6B6B", "#C93B3B"]
     
-    fig, ax = plt.subplots(figsize=(10, 1.8), facecolor='#EEF7F4')
+    fig, ax = plt.subplots(figsize=(10, 1.8), facecolor='#EBF3F9') # 하늘색 배경 동기화
     for i in range(7):
         ax.barh(0, 14.28, left=i*14.28, color=colors[i], edgecolor='white', height=0.5)
         ax.text(i*14.28 + 7.14, -0.4, labels[i], ha='center', va='top', fontsize=9, fontweight='bold', color='#333333', fontproperties=font_prop)
@@ -114,7 +120,7 @@ def draw_risk_scale_bar(score, current_label):
     return fig
 
 
-# 지역 선택에 따라 마커 화살표가 동적으로 가동되는 한국 인터랙티브 지도 함수
+# [디자인 반영 2] 배경용 대한민국 위치 지도 플로팅 함수
 def draw_korea_interactive_map(selected_region):
     regional_coords = {
         "서울": (4.5, 8.5), "인천": (3.5, 8.3), "경기": (5.2, 8.0), "강원": (7.5, 8.5),
@@ -123,23 +129,25 @@ def draw_korea_interactive_map(selected_region):
         "울산": (8.5, 4.0), "부산": (8.1, 3.2), "경북": (7.8, 6.0), "경남": (6.8, 3.5), "제주": (3.5, 0.5)
     }
     
-    fig, ax = plt.subplots(figsize=(5.5, 6.5), facecolor='#EEF7F4')
-    ax.set_facecolor('#E1F2ED')
+    # 지도가 선택창 뒤 배경처럼 깔릴 수 있도록 크기 조정 및 부드러운 투명도 처리
+    fig, ax = plt.subplots(figsize=(11, 5.0), facecolor='#FFFFFF')
+    ax.set_facecolor('#FFFFFF')
     
     for reg, (x, y) in regional_coords.items():
         if reg == selected_region:
-            ax.scatter(x, y, color='#D32F2F', s=350, zorder=4, edgecolor='white', linewidth=2)
-            ax.annotate("📍 선택 구역", xy=(x, y), xytext=(x, y+0.7),
-                        arrowprops=dict(facecolor='#D32F2F', shrink=0.05, width=2, headwidth=8),
-                        ha='center', fontsize=10, fontweight='bold', color='#D32F2F', fontproperties=font_prop)
+            # 선택된 구역 강조 마커
+            ax.scatter(x*1.5, y, color='#0288D1', s=450, zorder=4, edgecolor='white', linewidth=2)
+            ax.annotate("📍 선택 권역", xy=(x*1.5, y), xytext=(x*1.5, y+0.7),
+                        arrowprops=dict(facecolor='#0288D1', shrink=0.05, width=2, headwidth=8),
+                        ha='center', fontsize=10, fontweight='bold', color='#0288D1', fontproperties=font_prop)
         else:
-            ax.scatter(x, y, color='#B2DFDB', s=120, zorder=2)
+            # 연한 지도 형태 유지용 노드들
+            ax.scatter(x*1.5, y, color='#E1F0FA', s=180, zorder=2)
             
-        ax.text(x, y-0.3, reg, ha='center', va='top', fontsize=9, color='#263238', fontweight='bold', fontproperties=font_prop)
+        ax.text(x*1.5, y-0.3, reg, ha='center', va='top', fontsize=9, color='#546E7A', fontweight='bold', fontproperties=font_prop)
         
-    ax.set_xlim(1, 10)
+    ax.set_xlim(2, 15)
     ax.set_ylim(0, 10)
-    ax.set_title("🗺️ 전국 권역별 참진드기 모니터링 지도", fontsize=11, fontweight='bold', pad=10, fontproperties=font_prop)
     ax.axis('off')
     return fig
 
@@ -150,7 +158,6 @@ def send_real_sms(to_phone, sender_phone, message_text):
 
 
 # 🔮 당일 일정 자동 스캔 및 비상 메시징 구동 엔진
-# ⚠️ 과거 오타의 원인이었던 내부 수동 구동 함수 매개변수 레이어도 'calender.csv' 통계를 직접 추종하도록 수정 완료되었습니다.
 def run_automatic_daily_dispatch(target_date, contact_df, tick_df, calendar_df):
     today_events = calendar_df[calendar_df['학사일자'] == target_date]
     outdoor_today = today_events[
@@ -300,7 +307,7 @@ if tick_df is not None and calendar_df is not None:
                 st.markdown("---")
                 st.subheader("💬 자동 완성된 문자 메시지 스크립트")
                 
-                sms_body = f"[{target_school} 안전안내]\n{t_name} 선생님, {chosen_row['학사일자']}에 예정된 [{chosen_row['행사명']}]의 목적지 진드기 위험도는 오렌지3 분석 결과 [{risk_text}] 단계입니다.\n학생들의 안전을 위해 야외 활동 전 기피제 도포 및 긴 소매 의복 착용을 지도 바랍니다."
+                sms_body = f"[{target_school} 안전안내]\n{t_name} tobacco_teacher, {chosen_row['학사일자']}에 예정된 [{chosen_row['행사명']}]의 목적지 진드기 위험도는 오렌지3 분석 결과 [{risk_text}] 단계입니다.\n학생들의 안전을 위해 야외 활동 전 기피제 도포 및 긴 소매 의복 착용을 지도 바랍니다."
                 st.text_area("발송될 문자 내용 미리보기", value=sms_body, height=140)
                 
                 if st.button("📱 비상 안전 문자 전송하기", type="primary"):
@@ -311,37 +318,45 @@ if tick_df is not None and calendar_df is not None:
         else:
             st.info("🔍 해당 학교의 학사일정 상 야외 활동(체험학습/수련 등) 관련 특이 일정이 발견되지 않았습니다.")
 
+
     # ---------------------------------------------------------
-    # [탭 2] 개별 위험도 수동 조회 (상시 전국 모니터링 창)
+    # [탭 2] 개별 위험도 수동 조회 (상시 전국 모니터링 창 - 지도 배경 구현 완료)
     # ---------------------------------------------------------
     with tab2:
         st.subheader("🕵️ 전국 참진드기 리스크 상세 조건 수동 검색")
-        st.write("전국 시도 단위의 위험 조건 스펙트럼과 행정 구역별 위치 기반 위험도를 지도와 대조하여 모니터링합니다.")
+        st.write("전국 시도 단위의 위험 조건 선택 시 배경 지도 위에 위치 마커 화살표가 실시간 동적 대조 연동됩니다.")
         
-        map_col1, map_col2 = st.columns([1, 1])
+        # [수정사항 2] 큰 배경용 흰색 카드 레이아웃 안에 선택 인터페이스와 지도를 통합
+        st.markdown('<div class="map-bg-card">', unsafe_allow_html=True)
         
-        with map_col1:
-            st.markdown("#### ⚙️ 검색 조건 탐색기")
+        # 상단 공간에 마우스 조건 선택창 나열
+        sc1, sc2, sc3 = st.columns(3)
+        with sc1:
             q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index=16, key="tab2_reg")
+        with sc2:
             q_disease = st.selectbox("분석 대상 병원체/질병명", options=sorted(tick_df['disease'].unique()), index=1, key="tab2_dis")
+        with sc3:
             q_habitat = st.selectbox("세부 서식 환경 조사 구역", options=sorted(tick_df['weather_or_habitat'].unique()), index=3, key="tab2_hab")
             
-            search_result = tick_df[
-                (tick_df['region'] == q_region) & 
-                (tick_df['disease'] == q_disease) & 
-                (tick_df['weather_or_habitat'] == q_habitat)
-            ]
-            
-            if not search_result.empty:
-                res = search_result.iloc[0]
-                st.markdown("---")
-                st.metric("📌 최종 판정 등급", value=res['risk_level_text'])
-                st.metric("🔢 종합 포뮬러 스코어", value=f"{float(res['final_risk_score']):.2f}점")
-                st.metric("🦠 당해 발생 건수", value=f"{int(float(res['cases']))} 건")
+        search_result = tick_df[
+            (tick_df['region'] == q_region) & 
+            (tick_df['disease'] == q_disease) & 
+            (tick_df['weather_or_habitat'] == q_habitat)
+        ]
         
-        with map_col2:
-            map_figure = draw_korea_interactive_map(q_region)
-            st.pyplot(map_figure)
+        # 선택 위젯 아래 배경판 형태로 지도 그리기 호출
+        map_figure = draw_korea_interactive_map(q_region)
+        st.pyplot(map_figure)
+        
+        if not search_result.empty:
+            res = search_result.iloc[0]
+            st.markdown("---")
+            res_c1, res_c2, res_c3 = st.columns(3)
+            res_c1.metric("📌 최종 판정 등급", value=res['risk_level_text'])
+            res_c2.metric("🔢 종합 포뮬러 스코어", value=f"{float(res['final_risk_score']):.2f}점")
+            res_c3.metric("🦠 당해 발생 건수", value=f"{int(float(res['cases']))} 건")
+            
+        st.markdown('</div>', unsafe_allow_html=True) # 배경 카드 마감
             
         if not search_result.empty:
             with st.expander("📄 기반 데이터 출처 및 원천 조사 지표 보기"):
@@ -354,12 +369,13 @@ if tick_df is not None and calendar_df is not None:
         else:
             st.warning("조회 데이터가 존재하지 않는 특이 조건 조합입니다.")
 
+
     # ---------------------------------------------------------
-    # [탭 4] 월/일별 시즌 정밀 예측 (신규 추가 탭 기능 전체)
+    # [탭 4] 월/일별 시즌 정밀 예측
     # ---------------------------------------------------------
     with tab4:
         st.subheader("📆 날짜 기반 시즌 정밀 위험도 시뮬레이션")
-        st.info("질병관리청의 월별 참진드기 채집 증감 추이(시즌 가중치)를 연산하여 정밀 예보를 실행합니다.")
+        st.info("오렌지3 포뮬러 기본 스코어에 질병관리청의 월별 참진드기 채집 증감 추이(시즌 가중치)를 연산하여 정밀 예보를 실행합니다.")
         
         col_a, col_b = st.columns([1, 1])
         
