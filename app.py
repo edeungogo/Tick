@@ -18,7 +18,7 @@ def load_system_data():
         tick_df = raw_tick.drop([0, 1]).reset_index(drop=True)
         
         # 학사일정 데이터 로드 및 전처리
-        calendar_df = pd.read_csv("세종시 학사일정.xls - 학사일정.csv")
+        calendar_df = pd.read_csv("calendar.csv")
         # 문자열 형태의 학사일자를 날짜 형태로 변환 (예: 20250304 -> 2025-03-04)
         calendar_df['학사일자'] = pd.to_datetime(calendar_df['학사일자'].astype(str), format='%Y%m%d').dt.date
         
