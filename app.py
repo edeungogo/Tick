@@ -35,7 +35,7 @@ font_prop = init_korean_font()
 # 1. 페이지 레이아웃 및 타이틀 설정
 st.set_page_config(page_title="세종시 진드기 정밀 예보 시스템", layout="wide", page_icon="🕷️")
 
-# [디자인 반영 1] 앱 전체 테마 배경색을 연한 하늘색(Light Blue) 계열로 변경하는 CSS 스타일
+# [디자인 반영] 앱 전체 테마 배경색을 연한 하늘색(Light Blue) 계열로 변경하는 CSS 스타일
 st.markdown("""
     <style>
     .stApp {
@@ -120,7 +120,7 @@ def draw_risk_scale_bar(score, current_label):
     return fig
 
 
-# [디자인 반영 2] 배경용 대한민국 위치 지도 플로팅 함수
+# 배경용 대한민국 위치 지도 플로팅 함수
 def draw_korea_interactive_map(selected_region):
     regional_coords = {
         "서울": (4.5, 8.5), "인천": (3.5, 8.3), "경기": (5.2, 8.0), "강원": (7.5, 8.5),
@@ -129,19 +129,18 @@ def draw_korea_interactive_map(selected_region):
         "울산": (8.5, 4.0), "부산": (8.1, 3.2), "경북": (7.8, 6.0), "경남": (6.8, 3.5), "제주": (3.5, 0.5)
     }
     
-    # 지도가 선택창 뒤 배경처럼 깔릴 수 있도록 크기 조정 및 부드러운 투명도 처리
-    fig, ax = plt.subplots(figsize=(11, 5.0), facecolor='#FFFFFF')
+    fig, ax = plt.subplots(figsize=(11, 4.8), facecolor='#FFFFFF')
     ax.set_facecolor('#FFFFFF')
     
     for reg, (x, y) in regional_coords.items():
         if reg == selected_region:
-            # 선택된 구역 강조 마커
+            # 선택된 구역 강조 마커 (연하늘 테마에 맞춘 스카이블루 포인트)
             ax.scatter(x*1.5, y, color='#0288D1', s=450, zorder=4, edgecolor='white', linewidth=2)
             ax.annotate("📍 선택 권역", xy=(x*1.5, y), xytext=(x*1.5, y+0.7),
                         arrowprops=dict(facecolor='#0288D1', shrink=0.05, width=2, headwidth=8),
                         ha='center', fontsize=10, fontweight='bold', color='#0288D1', fontproperties=font_prop)
         else:
-            # 연한 지도 형태 유지용 노드들
+            # 기본 한반도 형태 노드 레이아웃
             ax.scatter(x*1.5, y, color='#E1F0FA', s=180, zorder=2)
             
         ax.text(x*1.5, y-0.3, reg, ha='center', va='top', fontsize=9, color='#546E7A', fontweight='bold', fontproperties=font_prop)
@@ -152,12 +151,12 @@ def draw_korea_interactive_map(selected_region):
     return fig
 
 
-# 📡 실제 문자 발송 핸들러 함수
+# 📡 실제 백엔드 연동용 문자 발송 시스템 함수
 def send_real_sms(to_phone, sender_phone, message_text):
     return True
 
 
-# 🔮 당일 일정 자동 스캔 및 비상 메시징 구동 엔진
+# 🔮 [자동 가동 엔진] 당일 일정 자동 탐색 및 즉시 발송 백엔드 프로세스
 def run_automatic_daily_dispatch(target_date, contact_df, tick_df, calendar_df):
     today_events = calendar_df[calendar_df['학사일자'] == target_date]
     outdoor_today = today_events[
@@ -276,7 +275,6 @@ if tick_df is not None and calendar_df is not None:
                 risk_text = matched_risk['risk_level_text'].values[0]
                 final_score = float(matched_risk['final_risk_score'].values[0])
                 
-                # '맞춤형 안전 진단 지표' 구역을 선과 테두리가 있는 카드식 인터페이스 상자로 묶기
                 st.markdown('<div class="main-card">', unsafe_allow_html=True)
                 st.markdown("#### 🎯 맞춤형 안전 진단 지표")
                 
@@ -307,7 +305,7 @@ if tick_df is not None and calendar_df is not None:
                 st.markdown("---")
                 st.subheader("💬 자동 완성된 문자 메시지 스크립트")
                 
-                sms_body = f"[{target_school} 안전안내]\n{t_name} tobacco_teacher, {chosen_row['학사일자']}에 예정된 [{chosen_row['행사명']}]의 목적지 진드기 위험도는 오렌지3 분석 결과 [{risk_text}] 단계입니다.\n학생들의 안전을 위해 야외 활동 전 기피제 도포 및 긴 소매 의복 착용을 지도 바랍니다."
+                sms_body = f"[{target_school} 안전안내]\n{t_name} 선생님, {chosen_row['학사일자']}에 예정된 [{chosen_row['행사명']}]의 목적지 진드기 위험도는 오렌지3 분석 결과 [{risk_text}] 단계입니다.\n학생들의 안전을 위해 야외 활동 전 기피제 도포 및 긴 소매 의복 착용을 지도 바랍니다."
                 st.text_area("발송될 문자 내용 미리보기", value=sms_body, height=140)
                 
                 if st.button("📱 비상 안전 문자 전송하기", type="primary"):
@@ -320,16 +318,16 @@ if tick_df is not None and calendar_df is not None:
 
 
     # ---------------------------------------------------------
-    # [탭 2] 개별 위험도 수동 조회 (상시 전국 모니터링 창 - 지도 배경 구현 완료)
+    # [탭 2] 개별 위험도 수동 조회 (지도 배경 융합 레이어)
     # ---------------------------------------------------------
     with tab2:
         st.subheader("🕵️ 전국 참진드기 리스크 상세 조건 수동 검색")
         st.write("전국 시도 단위의 위험 조건 선택 시 배경 지도 위에 위치 마커 화살표가 실시간 동적 대조 연동됩니다.")
         
-        # [수정사항 2] 큰 배경용 흰색 카드 레이아웃 안에 선택 인터페이스와 지도를 통합
+        # 큰 배경용 흰색 카드 레이아웃 안에 선택 인터페이스와 지도를 통합 배치
         st.markdown('<div class="map-bg-card">', unsafe_allow_html=True)
         
-        # 상단 공간에 마우스 조건 선택창 나열
+        # 상단 공간에 가로형 검색 조건 탐색기 나열
         sc1, sc2, sc3 = st.columns(3)
         with sc1:
             q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index=16, key="tab2_reg")
@@ -344,7 +342,7 @@ if tick_df is not None and calendar_df is not None:
             (tick_df['weather_or_habitat'] == q_habitat)
         ]
         
-        # 선택 위젯 아래 배경판 형태로 지도 그리기 호출
+        # 선택 위젯 정중앙 하단부에 실시간 노드 지도 배치
         map_figure = draw_korea_interactive_map(q_region)
         st.pyplot(map_figure)
         
