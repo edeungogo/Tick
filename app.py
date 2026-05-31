@@ -35,26 +35,40 @@ font_prop = init_korean_font()
 # 1. 페이지 레이아웃 및 타이틀 설정
 st.set_page_config(page_title="세종시 진드기 정밀 예보 시스템", layout="wide", page_icon="🕷️")
 
-# [디자인 반영] 앱 전체 테마 배경색을 연한 하늘색(Light Blue) 계열로 변경하는 CSS 스타일
+# [아이디어 4번 반영] 연한 하늘색 배경 및 부드러운 호버(Hover) 애니메이션 효과를 강화한 CSS 스타일링
 st.markdown("""
     <style>
+    /* 전체 앱 배경을 연한 파스텔 하늘색으로 지정 */
     .stApp {
         background-color: #EBF3F9;
     }
+    
+    /* 탭 1의 진단 지표 카드 기본 스타일 */
     .main-card {
         background-color: #FFFFFF;
         padding: 25px;
-        border-radius: 12px;
-        border: 2px solid #B9D1E6;
-        box-shadow: 2px 4px 12px rgba(0,0,0,0.04);
+        border-radius: 14px;
+        border: 1px solid #D0E1F0;
+        box-shadow: 0 4px 15px rgba(169, 198, 226, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
         margin-bottom: 20px;
     }
+    
+    /* 탭 2의 인포그래픽 지도 전용 배경 카드 스타일 */
     .map-bg-card {
         background-color: #FFFFFF;
-        padding: 20px;
-        border-radius: 12px;
-        border: 2px solid #B9D1E6;
-        position: relative;
+        padding: 25px;
+        border-radius: 16px;
+        border: 1px solid #C4DCF0;
+        box-shadow: 0 6px 20px rgba(140, 180, 215, 0.25);
+        margin-bottom: 20px;
+        transition: box-shadow 0.3s ease;
+    }
+    
+    /* 사용자가 마우스를 올렸을 때 부드럽게 카드가 떠오르는 인터랙티브 애니메이션 효과 효과 */
+    .main-card:hover, .map-bg-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(100, 150, 200, 0.35);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -106,7 +120,7 @@ def draw_risk_scale_bar(score, current_label):
     labels = ["매우 좋음", "좋음", "양호", "보통", "나쁨", "매우 나쁨", "최악"]
     colors = ["#72EF84", "#A7F1A8", "#A3D5FF", "#FFE786", "#FF9E86", "#FF6B6B", "#C93B3B"]
     
-    fig, ax = plt.subplots(figsize=(10, 1.8), facecolor='#EBF3F9') # 하늘색 배경 동기화
+    fig, ax = plt.subplots(figsize=(10, 1.8), facecolor='#FFFFFF') 
     for i in range(7):
         ax.barh(0, 14.28, left=i*14.28, color=colors[i], edgecolor='white', height=0.5)
         ax.text(i*14.28 + 7.14, -0.4, labels[i], ha='center', va='top', fontsize=9, fontweight='bold', color='#333333', fontproperties=font_prop)
@@ -120,43 +134,62 @@ def draw_risk_scale_bar(score, current_label):
     return fig
 
 
-# 배경용 대한민국 위치 지도 플로팅 함수
+# [아이디어 3번 반영] 인포그래픽 스타일의 고품격 대한민국 행정구역 및 네트워크 감시 지도 시각화 함수
 def draw_korea_interactive_map(selected_region):
+    # 실제 한반도 지형적 배치를 직관화한 정밀 인포그래픽 노드 매핑
     regional_coords = {
-        "서울": (4.5, 8.5), "인천": (3.5, 8.3), "경기": (5.2, 8.0), "강원": (7.5, 8.5),
-        "충북": (6.0, 6.5), "충남": (4.0, 6.0), "대전": (5.0, 5.5), "세종": (4.8, 6.1),
-        "전북": (4.5, 4.2), "광주": (3.8, 2.7), "전남": (4.2, 2.2), "대구": (7.3, 4.8),
-        "울산": (8.5, 4.0), "부산": (8.1, 3.2), "경북": (7.8, 6.0), "경남": (6.8, 3.5), "제주": (3.5, 0.5)
+        "서울": (4.5, 8.5), "인천": (3.2, 8.3), "경기": (5.2, 8.1), "강원": (7.8, 8.5),
+        "충북": (6.2, 6.4), "충남": (3.8, 5.9), "대전": (5.0, 5.3), "세종": (4.7, 6.0),
+        "전북": (4.5, 4.2), "광주": (3.6, 2.5), "전남": (4.1, 1.9), "대구": (7.4, 4.7),
+        "울산": (8.6, 3.9), "부산": (8.2, 3.0), "경북": (7.9, 6.0), "경남": (6.7, 3.4), "제주": (3.5, 0.4)
     }
     
-    fig, ax = plt.subplots(figsize=(11, 4.8), facecolor='#FFFFFF')
+    # 지도 연계망 인포그래픽 라인 구축 (수도권, 충청권, 전라권, 경상권 행정 라인 연결 구조화)
+    map_links = [
+        ("서울", "인천"), ("서울", "경기"), ("경기", "강원"), ("경기", "충북"), ("경기", "충남"),
+        ("충남", "세종"), ("세종", "대전"), ("세종", "충북"), ("충남", "전북"), ("충북", "경북"),
+        ("전북", "광주"), ("전북", "전남"), ("광주", "전남"), ("경북", "대구"), ("경북", "울산"),
+        ("경북", "경남"), ("경남", "부산"), ("경남", "울산"), ("전남", "경남"), ("전북", "경북")
+    ]
+    
+    fig, ax = plt.subplots(figsize=(12, 5.5), facecolor='#FFFFFF')
     ax.set_facecolor('#FFFFFF')
     
+    # 1. 인포그래픽 구조를 표현하는 행정구역간 링크 네트워크 선 먼저 그리기 (은은한 하늘색 선)
+    for start, end in map_links:
+        x1, y1 = regional_coords[start]
+        x2, y2 = regional_coords[end]
+        ax.plot([x1 * 1.5, x2 * 1.5], [y1, y2], color='#E2EEF8', linewidth=2, zorder=1)
+        
+    # 2. 각 권역별 행정거점 노드 및 강조 텍스트 렌더링
     for reg, (x, y) in regional_coords.items():
+        cx, cy = x * 1.5, y
         if reg == selected_region:
-            # 선택된 구역 강조 마커 (연하늘 테마에 맞춘 스카이블루 포인트)
-            ax.scatter(x*1.5, y, color='#0288D1', s=450, zorder=4, edgecolor='white', linewidth=2)
-            ax.annotate("📍 선택 권역", xy=(x*1.5, y), xytext=(x*1.5, y+0.7),
-                        arrowprops=dict(facecolor='#0288D1', shrink=0.05, width=2, headwidth=8),
-                        ha='center', fontsize=10, fontweight='bold', color='#0288D1', fontproperties=font_prop)
+            # 선택한 자치단체 강조: 깊고 선명한 프리미엄 블루 컬러 적용 및 외곽선 광채 효과
+            ax.scatter(cx, cy, color='#0288D1', s=550, zorder=4, edgecolor='#B3E5FC', linewidth=4, alpha=0.95)
+            ax.annotate("📍 선택 권역 감시 중", xy=(cx, cy), xytext=(cx, cy+0.8),
+                        arrowprops=dict(facecolor='#0288D1', shrink=0.08, width=2.5, headwidth=9, edgecolor='white'),
+                        ha='center', fontsize=11, fontweight='bold', color='#01579B', fontproperties=font_prop,
+                        bbox=dict(boxstyle="round,pad=0.3", fc="#E1F5FE", ec="#0288D1", lw=1))
         else:
-            # 기본 한반도 형태 노드 레이아웃
-            ax.scatter(x*1.5, y, color='#E1F0FA', s=180, zorder=2)
+            # 미선택 구역: 깔끔하게 톤다운된 하늘색 원형 노드로 깔끔하게 마감
+            ax.scatter(cx, cy, color='#D0E1F0', s=160, zorder=2, edgecolor='#FFFFFF', linewidth=1.5)
             
-        ax.text(x*1.5, y-0.3, reg, ha='center', va='top', fontsize=9, color='#546E7A', fontweight='bold', fontproperties=font_prop)
+        ax.text(cx, cy-0.35, reg, ha='center', va='top', fontsize=9.5, color='#455A64', fontweight='bold', fontproperties=font_prop)
         
     ax.set_xlim(2, 15)
     ax.set_ylim(0, 10)
+    ax.set_title("🗺️ 전국 시·도 권역별 참진드기 매개감염병 생태 모니터링망", fontsize=12, fontweight='bold', color='#1A365D', pad=15, fontproperties=font_prop)
     ax.axis('off')
     return fig
 
 
-# 📡 실제 백엔드 연동용 문자 발송 시스템 함수
+# 📡 실제 문자 발송 핸들러 함수
 def send_real_sms(to_phone, sender_phone, message_text):
     return True
 
 
-# 🔮 [자동 가동 엔진] 당일 일정 자동 탐색 및 즉시 발송 백엔드 프로세스
+# 🔮 당일 일정 자동 스캔 및 비상 메시징 구동 엔진
 def run_automatic_daily_dispatch(target_date, contact_df, tick_df, calendar_df):
     today_events = calendar_df[calendar_df['학사일자'] == target_date]
     outdoor_today = today_events[
@@ -194,7 +227,7 @@ def run_automatic_daily_dispatch(target_date, contact_df, tick_df, calendar_df):
     return dispatch_logs
 
 
-# 6. 메인 프로그램 구동 레이어
+# 6. Main 구동 컨트롤러 파트
 if tick_df is not None and calendar_df is not None:
     
     tab1, tab2, tab3, tab4 = st.tabs([
@@ -222,7 +255,7 @@ if tick_df is not None and calendar_df is not None:
         edited_contacts = st.data_editor(contact_df, num_rows="dynamic", use_container_width=True)
 
     # ---------------------------------------------------------
-    # [탭 1] 학사일정 알림 전송 대시보드 (메인 기능 창)
+    # [탭 1] 학사일정 알림 전송 대시보드
     # ---------------------------------------------------------
     with tab1:
         st.info(f"🤖 **실시간 자동 알림 엔진 작동 중** (현재 시스템 기준 날짜: {date.today()})")
@@ -275,6 +308,7 @@ if tick_df is not None and calendar_df is not None:
                 risk_text = matched_risk['risk_level_text'].values[0]
                 final_score = float(matched_risk['final_risk_score'].values[0])
                 
+                # [아이디어 4번 적용] 테두리선과 마우스 호버 모션이 반영된 메인 리포트 카드 레이아웃
                 st.markdown('<div class="main-card">', unsafe_allow_html=True)
                 st.markdown("#### 🎯 맞춤형 안전 진단 지표")
                 
@@ -318,16 +352,16 @@ if tick_df is not None and calendar_df is not None:
 
 
     # ---------------------------------------------------------
-    # [탭 2] 개별 위험도 수동 조회 (지도 배경 융합 레이어)
+    # [탭 2] 개별 위험도 수동 조회 (아이디어 3, 4번 고도화 매립존)
     # ---------------------------------------------------------
     with tab2:
         st.subheader("🕵️ 전국 참진드기 리스크 상세 조건 수동 검색")
         st.write("전국 시도 단위의 위험 조건 선택 시 배경 지도 위에 위치 마커 화살표가 실시간 동적 대조 연동됩니다.")
         
-        # 큰 배경용 흰색 카드 레이아웃 안에 선택 인터페이스와 지도를 통합 배치
+        # [아이디어 4번 적용] 소프트 섀도우와 푸른빛 윤곽 테두리가 주입된 입체형 카드 컨테이너 빌드
         st.markdown('<div class="map-bg-card">', unsafe_allow_html=True)
         
-        # 상단 공간에 가로형 검색 조건 탐색기 나열
+        # 상단 제어 리모컨 컴포넌트 배치
         sc1, sc2, sc3 = st.columns(3)
         with sc1:
             q_region = st.selectbox("검색할 광역 자치단체(지역)", options=sorted(tick_df['region'].unique()), index=16, key="tab2_reg")
@@ -342,7 +376,7 @@ if tick_df is not None and calendar_df is not None:
             (tick_df['weather_or_habitat'] == q_habitat)
         ]
         
-        # 선택 위젯 정중앙 하단부에 실시간 노드 지도 배치
+        # [아이디어 3번 적용] 인포그래픽 연계 네트워크 지도 플로팅 호출 (선택창 아래 밀착 배치)
         map_figure = draw_korea_interactive_map(q_region)
         st.pyplot(map_figure)
         
@@ -354,7 +388,7 @@ if tick_df is not None and calendar_df is not None:
             res_c2.metric("🔢 종합 포뮬러 스코어", value=f"{float(res['final_risk_score']):.2f}점")
             res_c3.metric("🦠 당해 발생 건수", value=f"{int(float(res['cases']))} 건")
             
-        st.markdown('</div>', unsafe_allow_html=True) # 배경 카드 마감
+        st.markdown('</div>', unsafe_allow_html=True) # 카드 디자인 끝마침 태그
             
         if not search_result.empty:
             with st.expander("📄 기반 데이터 출처 및 원천 조사 지표 보기"):
